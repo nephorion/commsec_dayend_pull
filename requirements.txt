@@ -1,0 +1,4 @@
+Flask~=2.3.3
+selenium~=4.22.0
+google-cloud-storage
+google-cloud-secret-manager
