@@ -1,13 +1,14 @@
 import os
-import time
+from enum import Enum
+import logging
+import google.cloud.logging
+from google.cloud.logging.handlers import CloudLoggingHandler
+from google.cloud.logging import DESCENDING
 from google.cloud import storage
 from google.cloud import secretmanager
-from flask import Flask
+from flask import Flask, jsonify
 from datetime import datetime, timedelta
-
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import Select
+from commsec_download import login, download, get_browser, goto_download, close_browser
 
 bucket_name = os.getenv('BUCKET')
 commsec_user = os.getenv('COMMSEC_USER')
@@ -17,8 +18,26 @@ project_id = os.getenv('GOOGLE_CLOUD_PROJECT')
 app = Flask(__name__)
 
 file_template = '%Y%m%d'
-query_template = '%d%m%Y'
 
+def setup_logging():
+    client = google.cloud.logging.Client()
+    client.setup_logging()
+
+    # Configure logging
+    logger = logging.getLogger('cloudLogger')
+    logger.setLevel(logging.INFO)
+
+    # Create a Cloud Logging handler
+    handler = CloudLoggingHandler(client)
+    handler.setLevel(logging.INFO)
+
+    # Add the handler to the logger
+    logger.addHandler(handler)
+
+    # Optional: add a console handler for local development
+    return logger
+
+logger = setup_logging()
 
 def get_files_in_bucket(storage_client, bucket):
     blobs = bucket.list_blobs()
@@ -36,24 +55,68 @@ def file_exists(bucket, date):
     blob = bucket.blob(make_file_name(date))
     return blob.exists()
 
-def make_status(date, status):
+
+Status = Enum('Status', 'SUCCESS ERROR SKIPPED_WEEKEND SKIPPED_HOLIDAY SKIPPED_EXISTS')
+def make_status(date, status:Status, msg):
     return {
         'date': date.strftime(file_template),
-        'status': status
+        'status': status.name,
+        'code': status.value,
+        'msg': msg
     }
 
 def process_date(browser, bucket, date):
     if not file_exists(bucket, date):
         if date.weekday() < 5:
-            return(f"Downloading - {date.strftime(file_template)}")
-            download(browser, date)
-        else:
-            #pass
-            return("Skipped Weekend")
-    else:
-        #pass
-        return("Skipped Already Exists")
+            if download(browser, date):
+                file_name = make_file_name(date)
 
+                if os.path.exists(file_name):
+                    try:
+                        blob = bucket.blob(file_name)
+                        blob.upload_from_filename(file_name)
+
+                        return make_status(
+                            date,
+                            Status.SUCCESS,
+                            f"Downloading - {date.strftime(file_template)}"
+                        )
+
+                    except Exception as e:
+                        return make_status(
+                            date,
+                            Status.ERROR,
+                            str(e)
+                        )
+                    finally:
+                        os.remove(f"./{file_name}")
+                else:
+                    return make_status(
+                        date,
+                        Status.ERROR,
+                        f"Error Downloading - {date.strftime(file_template)}"
+                    )
+
+
+            else:
+                return make_status(
+                    date,
+                    Status.ERROR,
+                    f"Error Downloading - {date.strftime(file_template)}"
+                )
+
+        else:
+            return make_status(
+                date,
+                Status.SKIPPED_WEEKEND,
+                f"Skipped Downloading(Weekend) - {date.strftime(file_template)}"
+            )
+    else:
+        return make_status(
+            date,
+            Status.SKIPPED_EXISTS,
+            f"Skipped Downloading(Exists) - {date.strftime(file_template)}"
+        )
 
 def get_password(project_id):
     secrets_client = secretmanager.SecretManagerServiceClient()
@@ -62,71 +125,57 @@ def get_password(project_id):
     return secret.payload.data.decode("UTF-8")
 
 
-def login(username, password, destination):
-    login_url = 'https://www2.commsec.com.au/secure/login'
-    data_url = 'https://www2.commsec.com.au/Private/Charts/EndOfDayPrices.aspx'
-
-    options = webdriver.ChromeOptions()
-    prefs = {"download.default_directory":destination}
-    options.add_experimental_option("prefs", prefs)
-    options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-
-    browser = webdriver.Chrome(options=options)
-    browser.get(login_url)
-    username_input = browser.find_element(By.ID, "username")
-    username_input.send_keys(username)
-    password_input = browser.find_element(By.ID, "password")
-    password_input.send_keys(password)
-
-    login_btn = browser.find_element(By.ID, "login")
-    login_btn.click()
-    time.sleep(2)
-
-    browser.get(data_url)
-    time.sleep(2)
-    return browser
-
-def download(browser, date):
-    type_select = Select(browser.find_element(By.ID, "ctl00_BodyPlaceHolder_EndOfDayPricesView1_ddlAllSecurityType_field"))
-    type_select.select_by_visible_text("ASX Equities")
-    format_select = Select(browser.find_element(By.ID, "ctl00_BodyPlaceHolder_EndOfDayPricesView1_ddlAllFormat_field"))
-    format_select.select_by_visible_text("Stock Easy")
-    date_input = browser.find_element(By.ID, "ctl00_BodyPlaceHolder_EndOfDayPricesView1_txtAllDate_field")
-    date_input.clear()
-    date_input.send_keys(date.strftime(query_template))
-    download_btn = browser.find_element(By.ID, "ctl00_BodyPlaceHolder_EndOfDayPricesView1_btnAllDownload_implementation_field")
-    download_btn.click()
-    time.sleep(.5)
-
 @app.route('/')
 def home():
+    logger.info('This is an info log message',
+                extra={'service': 'my-service', 'method': 'GET', 'endpoint': '/api/resource'})
+
     return 'processing...'
 
 
-@app.route('/today')
-def get_eod_data():
+def get_eod_data(date):
     storage_client = storage.Client()
     bucket = storage_client.bucket(bucket_name)
-    current_date = datetime.now()
+    current_date = date
 
     commsec_password = get_password(project_id)
 
-    browser = login(commsec_user, commsec_password, '/app')
+    browser = get_browser('/app', headless=True)
+    if not login(browser, commsec_user, commsec_password):
+        return jsonify(make_status(
+            date,
+            Status.ERROR,
+            "Failed to login"
+        ))
+    if not goto_download(browser):
+        return jsonify(make_status(
+            date,
+            Status.ERROR,
+            "Failed to navigate to download page"
+        ))
+
 
     status = process_date(
         browser,
         bucket,
         current_date
     )
-    browser.quit()
 
-    return [make_status(current_date,status+" "+commsec_user+" "+commsec_password)]
+    close_browser(browser)
 
+    return status
+
+
+@app.route('/today')
+def today():
+    return get_eod_data(datetime.now())
+
+@app.route('/backfill/<date_str>')
+def backfill_date(date_str):
+    return get_eod_data(datetime.strptime(date_str, file_template))
 
 @app.route('/backfill')
-def get_backfill_data():
+def backfill():
     storage_client = storage.Client()
     bucket = storage_client.bucket(bucket_name)
     current_date = datetime.now()
@@ -134,7 +183,20 @@ def get_backfill_data():
 
     commsec_password = get_password(project_id)
 
-    browser = login(commsec_user, commsec_password, '/app')
+    browser = get_browser('/app', headless=True)
+
+    if not login(browser, commsec_user, commsec_password):
+        return jsonify(make_status(
+            current_date,
+            Status.ERROR,
+            "Failed to login"
+        ))
+    if not goto_download(browser):
+        return jsonify(make_status(
+            current_date,
+            Status.ERROR,
+            "Failed to navigate to download page"
+        ))
 
     finished = False
     statuses = []
@@ -143,18 +205,15 @@ def get_backfill_data():
             finished = True
         else:
             statuses.append(
-                make_status(
-                    current_date,
-                    process_date(
-                        browser,
-                        bucket,
-                        current_date
-                    )
+                process_date(
+                    browser,
+                    bucket,
+                    current_date
                 )
             )
         current_date = current_date - timedelta(days=1)
 
-    browser.quit()
+    close_browser(browser)
 
     return statuses
 
