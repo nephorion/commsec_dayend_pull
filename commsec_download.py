@@ -7,6 +7,18 @@ from selenium.webdriver.support import expected_conditions as EC
 
 
 def get_browser(destination, headless=True):
+    """
+    Method to get a Chrome browser instance.
+
+    :param destination: Path to the download directory.
+    :type destination: str
+
+    :param headless: Flag to run the browser in headless mode. Default is True.
+    :type headless: bool
+
+    :return: Chrome browser instance.
+    :rtype: selenium.webdriver.chrome.webdriver.WebDriver
+    """
     options = webdriver.ChromeOptions()
     prefs = {"download.default_directory": destination}
     options.add_experimental_option("prefs", prefs)
@@ -19,6 +31,14 @@ def get_browser(destination, headless=True):
 
 
 def login(browser, username, password):
+    """
+    Login to a given website using a web browser.
+
+    :param browser: The web browser instance to use.
+    :param username: The username to login with.
+    :param password: The password to login with.
+    :return: True if login is successful, False otherwise.
+    """
     login_url = 'https://www2.commsec.com.au/secure/login'
     browser.get(login_url)
 
@@ -43,6 +63,12 @@ def login(browser, username, password):
 
 
 def goto_download(browser):
+    """
+    Navigates the given browser to the download page.
+
+    :param browser: The browser object used for navigation.
+    :return: True if the download element is present, False otherwise.
+    """
     data_url = 'https://www2.commsec.com.au/Private/Charts/EndOfDayPrices.aspx'
     browser.get(data_url)
 
@@ -59,6 +85,15 @@ def goto_download(browser):
 
 
 def download(browser, date):
+    """
+    Method to download data from a browser.
+
+    :param browser: The browser object to use for downloading.
+    :param date: The date for which the data should be downloaded.
+    :type date: datetime.datetime
+    :return: True if download was successful, False otherwise.
+    :rtype: bool
+    """
     query_template = '%d%m%Y'
 
     try:
@@ -79,6 +114,12 @@ def download(browser, date):
         return False
 
 def close_browser(browser):
+    """
+    Close the browser.
+
+    :param browser: The browser instance to close.
+    :return: None
+    """
     time.sleep(3)
     browser.quit()
 
