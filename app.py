@@ -100,6 +100,11 @@ def download(browser, date):
     download_btn.click()
     time.sleep(.5)
 
+@app.route('/')
+def home():
+    return 'processing...'
+
+
 @app.route('/today')
 def get_eod_data():
     storage_client = storage.Client()
