@@ -3,4 +3,5 @@ selenium~=4.22.0
 google-cloud-storage
 google-cloud-secret-manager
 google-cloud-logging
+google-cloud-pubsub
 python-dotenv~=1.0.1

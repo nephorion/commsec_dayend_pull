@@ -1,16 +1,18 @@
 import os
 from enum import Enum
 import logging
+import json
 import google.cloud.logging
 from google.cloud.logging.handlers import CloudLoggingHandler
-from google.cloud.logging import DESCENDING
 from google.cloud import storage
 from google.cloud import secretmanager
+from google.cloud import pubsub_v1
 from flask import Flask, jsonify
 from datetime import datetime, timedelta
 from commsec_download import login, download, get_browser, goto_download, close_browser
 
 bucket_name = os.getenv('BUCKET')
+topic_name = os.getenv('TOPIC')
 commsec_user = os.getenv('COMMSEC_USER')
 project_id = os.getenv('GOOGLE_CLOUD_PROJECT')
 
@@ -118,11 +120,23 @@ def process_date(browser, bucket, date):
             f"Skipped Downloading(Exists) - {date.strftime(file_template)}"
         )
 
+
 def get_password(project_id):
     secrets_client = secretmanager.SecretManagerServiceClient()
     name = f"projects/{project_id}/secrets/COMMSEC_PASSWORD/versions/latest"
     secret = secrets_client.access_secret_version(request={"name": name})
     return secret.payload.data.decode("UTF-8")
+
+
+def publish(publisher, topic_path, data):
+    data_str = json.dumps(data)
+    data_bytes = data_str.encode('utf-8')
+    try:
+        future = publisher.publish(topic_path, data=data_bytes)
+        future.result()
+        return True
+    except:
+        return False
 
 
 @app.route('/')
@@ -139,6 +153,9 @@ def get_eod_data(date):
     current_date = date
 
     commsec_password = get_password(project_id)
+
+    publisher = pubsub_v1.PublisherClient()
+    topic_path = publisher.topic_path(project_id, topic_name)
 
     browser = get_browser('/app', headless=True)
     if not login(browser, commsec_user, commsec_password):
