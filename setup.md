@@ -20,6 +20,7 @@ Copy Data
 ```
 gsutil -m cp ..\..\data\dayend\*.txt gs://stocks-427911-dayend
 gsutil -m rsync ..\..\data\dayend gs://stocks-427911-dayend
+
 ```
 
 Create service account
@@ -33,18 +34,19 @@ Give the SA access to create objects
 gcloud projects add-iam-policy-binding stocks-427911 \
     --member="serviceAccount:commsec_dayend_pull_sa@stocks-427911.iam.gserviceaccount.com" \
     --role="roles/storage.objectCreator"
+    --role="roles/secretmanager.secretAccessor"
+    --role="roles/run.invoker" \
 ```
 
-Give the SA access to read secrets
-```
-gcloud projects add-iam-policy-binding stocks-427911 \
-    --member="serviceAccount:commsec_dayend_pull_sa@stocks-427911.iam.gserviceaccount.com" \
-    --role="roles/secretmanager.secretAccessor"
-```
 
 
 Docker Build and Push
 ```
+gcloud services enable artifactregistry.googleapis.com
+gcloud artifacts repositories create stocks-427911 \
+    --repository-format=docker \
+    --description="Docker repository for stocks-427911"
+gcloud auth configure-docker australia-southeast1.pkg.dev
 gcloud builds submit --tag gcr.io/stocks-427911/commsec_dayend_pull:v1.0 .
 ```
 
@@ -80,8 +82,16 @@ Setup the scheduler
 gcloud scheduler jobs create http commsec-dayend-pull-schedule \
     --schedule="0 20 * * *" \
     --time-zone="Australia/Sydney" \
-    --uri=<url>/today \
+    --uri=<url>/backfill/today \
     --http-method=GET \
     --oidc-service-account-email=commsec_dayend_pull_sa@stocks-427911.iam.gserviceaccount.com
+```
+
+Create topic
+```
+gcloud pubsub topics create commsec-dayend-pull-done
+gcloud pubsub topics add-iam-policy-binding commsec-dayend-pull-done \
+  --member=serviceAccount:=commsec_dayend_pull_sa@stocks-427911.iam.gserviceaccount.com \
+  --role=roles/pubsub.publisher
 ```
 

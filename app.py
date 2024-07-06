@@ -2,13 +2,14 @@ import os
 from enum import Enum
 import logging
 import json
+import pandas as pd
 import google.cloud.logging
 from google.cloud.logging.handlers import CloudLoggingHandler
 from google.cloud import storage
 from google.cloud import secretmanager
 from google.cloud import pubsub_v1
-from flask import Flask, jsonify
-from datetime import datetime, timedelta
+from flask import Flask
+from datetime import datetime
 from commsec_download import login, download, get_browser, goto_download, close_browser
 
 bucket_name = os.getenv('BUCKET')
@@ -20,6 +21,7 @@ project_id = os.getenv('GOOGLE_CLOUD_PROJECT')
 app = Flask(__name__)
 
 file_template = '%Y%m%d'
+
 
 def setup_logging():
     client = google.cloud.logging.Client()
@@ -39,13 +41,13 @@ def setup_logging():
     # Optional: add a console handler for local development
     return logger
 
+
 logger = setup_logging()
+
 
 def get_files_in_bucket(storage_client, bucket):
     blobs = bucket.list_blobs()
-    file_list = []
-    for blob in blobs:
-        file_list.append(blob.name)
+    file_list = [blob.name for blob in blobs]
     return file_list
 
 
@@ -53,13 +55,15 @@ def make_file_name(date):
     return f"ASXEQUITIESStockEasy-{date.strftime(file_template)}.txt"
 
 
-def file_exists(bucket, date):
+def file_exists_in_bucket(bucket, date):
     blob = bucket.blob(make_file_name(date))
     return blob.exists()
 
 
 Status = Enum('Status', 'SUCCESS ERROR SKIPPED_WEEKEND SKIPPED_HOLIDAY SKIPPED_EXISTS')
-def make_status(date, status:Status, msg):
+
+
+def make_status(date, status: Status, msg):
     return {
         'date': date.strftime(file_template),
         'status': status.name,
@@ -67,58 +71,61 @@ def make_status(date, status:Status, msg):
         'msg': msg
     }
 
-def process_date(browser, bucket, date):
-    if not file_exists(bucket, date):
-        if date.weekday() < 5:
-            if download(browser, date):
-                file_name = make_file_name(date)
 
-                if os.path.exists(file_name):
-                    try:
-                        blob = bucket.blob(file_name)
-                        blob.upload_from_filename(file_name)
+def process_date(browser, bucket, date, holidays):
+    date_str = date.strftime(file_template)
+    file_name = make_file_name(date)
 
-                        return make_status(
-                            date,
-                            Status.SUCCESS,
-                            f"Downloading - {date.strftime(file_template)}"
-                        )
-
-                    except Exception as e:
-                        return make_status(
-                            date,
-                            Status.ERROR,
-                            str(e)
-                        )
-                    finally:
-                        os.remove(f"./{file_name}")
-                else:
-                    return make_status(
-                        date,
-                        Status.ERROR,
-                        f"Error Downloading - {date.strftime(file_template)}"
-                    )
-
-
-            else:
-                return make_status(
-                    date,
-                    Status.ERROR,
-                    f"Error Downloading - {date.strftime(file_template)}"
-                )
-
-        else:
-            return make_status(
-                date,
-                Status.SKIPPED_WEEKEND,
-                f"Skipped Downloading(Weekend) - {date.strftime(file_template)}"
-            )
-    else:
+    if date.weekday() >= 5:
         return make_status(
             date,
-            Status.SKIPPED_EXISTS,
-            f"Skipped Downloading(Exists) - {date.strftime(file_template)}"
+            Status.SKIPPED_WEEKEND,
+            f"Skipped Downloading(Weekend) - {date_str}"
         )
+
+    if date_str in holidays:
+        return make_status(
+            date,
+            Status.SKIPPED_HOLIDAY,
+            f"Skipped Downloading(Holiday) - {date_str}"
+        )
+
+    if not file_exists_in_bucket(bucket, date):
+        if not download(browser, date):
+            return make_status(
+                date,
+                Status.ERROR,
+                f"Error Downloading - {date_str}"
+            )
+
+        if os.path.exists(file_name):
+            return make_status(
+                date,
+                Status.ERROR,
+                f"Error Downloading - {date_str}"
+            )
+
+        try:
+            blob = bucket.blob(file_name)
+            blob.upload_from_filename(file_name)
+
+            return make_status(
+                date,
+                Status.SUCCESS,
+                f"Downloading - {date_str}"
+            )
+
+        except Exception as e:
+            return make_status(
+                date,
+                Status.ERROR,
+                str(e)
+            )
+        finally:
+            os.remove(f"./{file_name}")
+
+
+
 
 
 def get_password(project_id):
@@ -135,8 +142,78 @@ def publish(publisher, topic_path, data):
         future = publisher.publish(topic_path, data=data_bytes)
         future.result()
         return True
-    except:
+    except Exception as e:
+        logger.error(f"Unable to publish to pub/sub [{e}]")
         return False
+
+
+def setup_browser(browser, user, password):
+    if not login(browser, user, password):
+        return False, "Failed to login"
+    if not goto_download(browser):
+        return False, "Failed to navigate to download page"
+    return True, None
+
+
+def get_bucket(bucket_name):
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+    return bucket
+
+
+def get_eod_data(dates):
+    statuses = []
+    today = datetime.now()
+
+    bucket = get_bucket(bucket_name)
+    commsec_password = get_password(project_id)
+
+    publisher = pubsub_v1.PublisherClient()
+    topic_path = publisher.topic_path(project_id, topic_name)
+
+    holidays = get_dates_from_holiday_csv('./australian-public-holidays-combined-2021-2024.csv')
+
+    browser = get_browser('/app', headless=True)
+    setup_status, msg = setup_browser(browser, commsec_user, commsec_password)
+    if not setup_status:
+        close_browser(browser)
+        publish(publisher, topic_path, {})
+        return make_status(today, Status.ERROR, msg)
+    else:
+        for date in dates:
+            statuses.append(process_date(
+                browser,
+                bucket,
+                date,
+                holidays
+            ))
+        publish(publisher, topic_path, {})
+        close_browser(browser)
+        return statuses
+
+
+def parse_date_str(date_str):
+    if date_str == 'today':
+        return datetime.now()
+    else:
+        return datetime.strptime(date_str, file_template)
+
+
+def get_date_range(from_date_str, to_date_str):
+    from_date = parse_date_str(from_date_str)
+    to_date = parse_date_str(to_date_str)
+    date_range = pd.date_range(start=to_date, end=from_date)
+    dates = date_range.tolist()
+    dates.reverse()
+
+    return dates
+
+
+def get_dates_from_holiday_csv(file_path):
+    df = pd.read_csv(file_path)
+    date_strs = df['Date'].tolist()
+    dates = [str(d) for d in date_strs]
+    return dates
 
 
 @app.route('/')
@@ -147,92 +224,16 @@ def home():
     return 'processing...'
 
 
-def get_eod_data(date):
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(bucket_name)
-    current_date = date
-
-    commsec_password = get_password(project_id)
-
-    publisher = pubsub_v1.PublisherClient()
-    topic_path = publisher.topic_path(project_id, topic_name)
-
-    browser = get_browser('/app', headless=True)
-    if not login(browser, commsec_user, commsec_password):
-        return jsonify(make_status(
-            date,
-            Status.ERROR,
-            "Failed to login"
-        ))
-    if not goto_download(browser):
-        return jsonify(make_status(
-            date,
-            Status.ERROR,
-            "Failed to navigate to download page"
-        ))
+@app.route('/backfill/at/<at_date_str>')
+def backfill_date(at_date_str):
+    dates = get_date_range(at_date_str, at_date_str)
+    return get_eod_data(dates)
 
 
-    status = process_date(
-        browser,
-        bucket,
-        current_date
-    )
-
-    close_browser(browser)
-
-    return status
-
-
-@app.route('/today')
-def today():
-    return get_eod_data(datetime.now())
-
-@app.route('/backfill/<date_str>')
-def backfill_date(date_str):
-    return get_eod_data(datetime.strptime(date_str, file_template))
-
-@app.route('/backfill')
-def backfill():
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(bucket_name)
-    current_date = datetime.now()
-    end_date = datetime.fromisoformat('2021-07-03')
-
-    commsec_password = get_password(project_id)
-
-    browser = get_browser('/app', headless=True)
-
-    if not login(browser, commsec_user, commsec_password):
-        return jsonify(make_status(
-            current_date,
-            Status.ERROR,
-            "Failed to login"
-        ))
-    if not goto_download(browser):
-        return jsonify(make_status(
-            current_date,
-            Status.ERROR,
-            "Failed to navigate to download page"
-        ))
-
-    finished = False
-    statuses = []
-    while not finished:
-        if current_date <= end_date:
-            finished = True
-        else:
-            statuses.append(
-                process_date(
-                    browser,
-                    bucket,
-                    current_date
-                )
-            )
-        current_date = current_date - timedelta(days=1)
-
-    close_browser(browser)
-
-    return statuses
+@app.route('/backfill/from/<from_date_str>/to/<to_date_str>')
+def backfill(from_date_str, to_date_str):
+    dates = get_date_range(from_date_str, to_date_str)
+    return get_eod_data(dates)
 
 
 if __name__ == '__main__':
