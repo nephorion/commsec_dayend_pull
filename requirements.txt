@@ -6,4 +6,5 @@ google-cloud-storage
 google-cloud-secret-manager
 google-cloud-logging
 google-cloud-pubsub
+google-cloud-bigquery
 

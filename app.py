@@ -8,6 +8,7 @@ from google.cloud.logging.handlers import CloudLoggingHandler
 from google.cloud import storage
 from google.cloud import secretmanager
 from google.cloud import pubsub_v1
+from google.cloud import bigquery
 from flask import Flask
 from datetime import datetime
 from commsec_download import login, download, get_browser, goto_download, close_browser
@@ -190,7 +191,22 @@ def get_dates_from_holiday_csv(file_path):
 def home():
     logger.info('This is an info log message')
 
-    return 'processing...'
+    client = bigquery.Client()
+
+    query = """
+        SELECT distinct(Date) as date
+        FROM `lookup.holidays`
+    """
+
+    rows = client.query_and_wait(query)
+
+    rs = [str(row["date"]) for row in rows]
+    #for row in rows:
+        # Row values can be accessed by field name or index.
+    #    ("name={}, count={}".format(row["date"]))
+
+
+    return f"processing...{rs}"
 
 
 @app.route('/backfill/at/<at_date_str>')
