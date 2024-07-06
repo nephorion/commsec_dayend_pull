@@ -8,12 +8,15 @@ gcloud config set region australia-southeast1
 
 For local dev
 ```
+gcloud auth login
+gcloud auth application-default login
 gcloud auth application-default set-quota-project stocks-427911
 ```
 
-Create a bucket
+Create a bucketgarment-lime-footrace-anthrax
 ```
-gcloud storage buckets create gs://stocks-427911-dayend --location=AUSTRALIA-SOUTHEAST1
+gcloud storage buckets create gs://stocks-427911 --location=AUSTRALIA-SOUTHEAST1
+
 ```
 
 Copy Data

@@ -27,32 +27,22 @@ def setup_logging():
     client = google.cloud.logging.Client()
     client.setup_logging()
 
-    # Configure logging
-    logger = logging.getLogger('cloudLogger')
+    logger = logging.getLogger('commsec_dayend_pull')
     logger.setLevel(logging.INFO)
 
-    # Create a Cloud Logging handler
     handler = CloudLoggingHandler(client)
     handler.setLevel(logging.INFO)
 
-    # Add the handler to the logger
     logger.addHandler(handler)
 
-    # Optional: add a console handler for local development
     return logger
 
 
 logger = setup_logging()
 
 
-def get_files_in_bucket(storage_client, bucket):
-    blobs = bucket.list_blobs()
-    file_list = [blob.name for blob in blobs]
-    return file_list
-
-
 def make_file_name(date):
-    return f"ASXEQUITIESStockEasy-{date.strftime(file_template)}.txt"
+    return f"eod/ASXEQUITIESStockEasy-{date.strftime(file_template)}.txt"
 
 
 def file_exists_in_bucket(bucket, date):
@@ -77,55 +67,33 @@ def process_date(browser, bucket, date, holidays):
     file_name = make_file_name(date)
 
     if date.weekday() >= 5:
-        return make_status(
-            date,
-            Status.SKIPPED_WEEKEND,
-            f"Skipped Downloading(Weekend) - {date_str}"
-        )
+        logger.info(f"Skipped Downloading(Weekend) - {date_str}")
+        return False
 
     if date_str in holidays:
-        return make_status(
-            date,
-            Status.SKIPPED_HOLIDAY,
-            f"Skipped Downloading(Holiday) - {date_str}"
-        )
+        logger.info(f"Skipped Downloading(Holiday) - {date_str}")
+        return False
 
     if not file_exists_in_bucket(bucket, date):
         if not download(browser, date):
-            return make_status(
-                date,
-                Status.ERROR,
-                f"Error Downloading - {date_str}"
-            )
+            logger.error(f"Error Downloading (Browser) - {date_str}")
+            return False
 
         if os.path.exists(file_name):
-            return make_status(
-                date,
-                Status.ERROR,
-                f"Error Downloading - {date_str}"
-            )
+            logger.error(f"Error Downloading (Local Copy) - {date_str}")
+            return False
 
         try:
             blob = bucket.blob(file_name)
             blob.upload_from_filename(file_name)
 
-            return make_status(
-                date,
-                Status.SUCCESS,
-                f"Downloading - {date_str}"
-            )
+            logger.info(f"Uploaded - {date_str}")
 
         except Exception as e:
-            return make_status(
-                date,
-                Status.ERROR,
-                str(e)
-            )
+            logger.error(f"Error Uploading - {date_str} [{str(e)}]")
+            return False
         finally:
             os.remove(f"./{file_name}")
-
-
-
 
 
 def get_password(project_id):
@@ -141,6 +109,7 @@ def publish(publisher, topic_path, data):
     try:
         future = publisher.publish(topic_path, data=data_bytes)
         future.result()
+        logger.info(f"Published to pub/sub")
         return True
     except Exception as e:
         logger.error(f"Unable to publish to pub/sub [{e}]")
@@ -149,10 +118,12 @@ def publish(publisher, topic_path, data):
 
 def setup_browser(browser, user, password):
     if not login(browser, user, password):
-        return False, "Failed to login"
+        logger.error("Failed to login")
+        return False
     if not goto_download(browser):
-        return False, "Failed to navigate to download page"
-    return True, None
+        logger.error("Failed to navigate to download page")
+        return False
+    return True
 
 
 def get_bucket(bucket_name):
@@ -205,7 +176,6 @@ def get_date_range(from_date_str, to_date_str):
     date_range = pd.date_range(start=to_date, end=from_date)
     dates = date_range.tolist()
     dates.reverse()
-
     return dates
 
 
@@ -218,8 +188,7 @@ def get_dates_from_holiday_csv(file_path):
 
 @app.route('/')
 def home():
-    logger.info('This is an info log message',
-                extra={'service': 'my-service', 'method': 'GET', 'endpoint': '/api/resource'})
+    logger.info('This is an info log message')
 
     return 'processing...'
 
