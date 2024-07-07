@@ -18,6 +18,7 @@ from CustomException import CustomException
 #
 file_template = '%Y%m%d'
 app_name = "commsec_dayend_pull"
+field_names = ['tkr','date','open','high','low','close','volume']
 
 # Get the environment variables
 #
@@ -117,11 +118,9 @@ def delete_records_in_bq(bq_client,filenames):
         delete_job.result()  # Wait for the job to complete
 
 def sync_gcs_to_bq(gcs_files, bq_files, bucket, bq_client):
-    # Identify files to insert into BigQuery
     files_to_insert = set(gcs_files) - set(bq_files)
-    files_to_delete = set(bq_files) - set(gcs_files)
+    #files_to_delete = set(bq_files) - set(gcs_files)
 
-    # Insert new files into BigQuery
     for file_name in files_to_insert:
         blob = bucket.blob(file_name)
         file_contents = blob.download_as_text()
@@ -130,19 +129,19 @@ def sync_gcs_to_bq(gcs_files, bq_files, bucket, bq_client):
         json_data = []
         for row in rows:
             columns = row.split(',')
-            json_record = {f"column_{i}": value for i, value in enumerate(columns)}
+            json_record = {f"{field_names[i]}": value for i, value in enumerate(columns)}
+            json_record['date'] = str(datetime.strptime(json_record['date'], '%Y%m%d').date())
             json_record['filename'] = file_name
+            json_record['timestamp'] = datetime.now().isoformat()
             json_data.append(json_record)
 
         table_ref = bq_client.dataset('data').table('raw_eod')
         errors = bq_client.insert_rows_json(table_ref, json_data)
 
         if errors:
-            print(f"Encountered errors while inserting rows for {file_name}: {errors}")
-        else:
-            print(f"Data from {file_name} successfully inserted into BigQuery")
+            logger.error(f"Encountered errors while inserting rows for {file_name}: {errors}")
 
-    delete_records_in_bq(bq_client, files_to_delete)
+    #delete_records_in_bq(bq_client, files_to_delete)
 
 
 def process_date(browser, bucket, date, holidays):
@@ -183,19 +182,19 @@ def get_eod_data(dates):
         bucket = storage_client.bucket(bucket_name)
         holidays = get_dates_from_holiday_csv(bq_client)
 
-        browser = get_browser('/app', headless=True)
-        login(browser, commsec_user, commsec_password)
-        goto_download(browser)
+        #browser = get_browser('/app', headless=True)
+        #login(browser, commsec_user, commsec_password)
+        #goto_download(browser)
 
-        for date in dates:
-            process_date(
-                browser,
-                bucket,
-                date,
-                holidays
-            )
+        #for date in dates:
+        #    process_date(
+        #        browser,
+        #        bucket,
+        #        date,
+        #        holidays
+        #    )
 
-        gcs_files = list_files_with_prefix(bucket, 'eod')
+        gcs_files = list_files_with_prefix(bucket, 'eod/')
         bq_files = get_filenames_in_bq(bq_client)
         sync_gcs_to_bq(gcs_files, bq_files, bucket, bq_client)
 
@@ -223,6 +222,7 @@ def backfill_date(at_date_str):
 @app.route('/backfill/from/<from_date_str>/to/<to_date_str>')
 def backfill(from_date_str, to_date_str):
     dates = get_date_range(from_date_str, to_date_str)
+    get_eod_data(dates)
     return make_response(jsonify({}), 200)
 
 

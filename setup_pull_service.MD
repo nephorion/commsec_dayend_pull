@@ -1,3 +1,7 @@
+
+bq mk --location=australia-southeast1 data
+bq mk --table data.raw_eod raw_eod_schema.json
+
 ## Set the ENV variables
 ```
 export REGION=australia-southeast1

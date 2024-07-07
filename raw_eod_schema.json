@@ -1,0 +1,47 @@
+[
+  {
+    "name": "tkr",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "date",
+    "type": "DATE",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "open",
+    "type": "FLOAT",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "high",
+    "type": "FLOAT",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "low",
+    "type": "FLOAT",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "close",
+    "type": "FLOAT",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "volume",
+    "type": "INTEGER",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "timestamp",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "filename",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  }
+]
