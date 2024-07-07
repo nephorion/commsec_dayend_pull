@@ -139,7 +139,7 @@ def sync_gcs_to_bq(gcs_files, bq_files, bucket, bq_client):
         errors = bq_client.insert_rows_json(table_ref, json_data)
 
         if errors:
-            logger.error(f"Encountered errors while inserting rows for {file_name}: {errors}")
+            logger.error(f"Encountered errors while inserting rows for {file_name}: {errors[0]}")
 
     #delete_records_in_bq(bq_client, files_to_delete)
 
