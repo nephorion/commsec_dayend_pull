@@ -1,0 +1,22 @@
+[
+  {
+    "name": "tkr",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "company_name",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "security_type",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "isin_code",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  }
+]
