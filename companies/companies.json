@@ -1,0 +1,27 @@
+[
+  {
+    "name": "tkr",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "company_name",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "industry",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "list_date",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "market_cap",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  }
+]
