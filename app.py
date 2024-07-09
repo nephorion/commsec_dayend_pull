@@ -1,5 +1,5 @@
 import os
-from enum import Enum
+import time
 import logging
 import json
 import pandas as pd
@@ -12,7 +12,6 @@ from google.cloud import bigquery
 from flask import Flask, jsonify, make_response
 from datetime import datetime
 from commsec_download import login, download, get_browser, goto_download, close_browser
-from CustomException import CustomException
 
 # Constants
 #
@@ -47,12 +46,12 @@ def list_files_with_prefix(bucket, prefix):
     return file_list
 
 
-def make_file_name(date):
-    return f"eod/ASXEQUITIESStockEasy-{date.strftime(file_template)}.txt"
+def make_file_name(prefix, date):
+    return f"{prefix}ASXEQUITIESStockEasy-{date.strftime(file_template)}.txt"
 
 
 def file_exists_in_bucket(bucket, date):
-    blob = bucket.blob(make_file_name(date))
+    blob = bucket.blob(make_file_name('eod/',date))
     return blob.exists()
 
 def get_password(secrets_client, project_id):
@@ -140,13 +139,26 @@ def sync_gcs_to_bq(gcs_files, bq_files, bucket, bq_client):
 
         if errors:
             logger.error(f"Encountered errors while inserting rows for {file_name}: {errors[0]}")
+        else:
+            logger.info(f"Inserted rows from [{file_name}]")
 
     #delete_records_in_bq(bq_client, files_to_delete)
 
 
+def wait_for_file(filepath, timeout):
+    start_time = time.time()
+
+    while time.time() - start_time < timeout:
+        if os.path.exists(filepath):
+            return True
+        time.sleep(.5)
+
+    return False
+
 def process_date(browser, bucket, date, holidays):
     date_str = date.strftime(file_template)
-    file_name = make_file_name(date)
+    file_name = make_file_name('eod/',date)
+    local_file_name = make_file_name('', date)
 
     if date.weekday() >= 5:
         logger.info(f"Skipped Downloading(Weekend) - {date_str}")
@@ -159,14 +171,15 @@ def process_date(browser, bucket, date, holidays):
     if not file_exists_in_bucket(bucket, date):
         try:
             download(browser, date)
-            if os.path.exists(file_name):
+            if not wait_for_file(local_file_name, 10):
                 raise Exception(f"Error Downloading (Local Copy) - {date_str}")
-            bucket.blob(file_name).upload_from_filename(file_name)
+            bucket.blob(file_name).upload_from_filename(local_file_name)
             logger.info(f"Uploaded - {date_str}")
         except Exception as e:
             logger.error(e)
         finally:
-            os.remove(f"./{file_name}")
+            if os.path.exists(local_file_name):
+                os.remove(f"./{local_file_name}")
 
 
 def get_eod_data(dates):
@@ -182,17 +195,17 @@ def get_eod_data(dates):
         bucket = storage_client.bucket(bucket_name)
         holidays = get_dates_from_holiday_csv(bq_client)
 
-        #browser = get_browser('/app', headless=True)
-        #login(browser, commsec_user, commsec_password)
-        #goto_download(browser)
+        browser = get_browser('/app', headless=True)
+        login(browser, commsec_user, commsec_password)
+        goto_download(browser)
 
-        #for date in dates:
-        #    process_date(
-        #        browser,
-        #        bucket,
-        #        date,
-        #        holidays
-        #    )
+        for date in dates:
+            process_date(
+                browser,
+                bucket,
+                date,
+                holidays
+            )
 
         gcs_files = list_files_with_prefix(bucket, 'eod/')
         bq_files = get_filenames_in_bq(bq_client)
