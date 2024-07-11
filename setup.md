@@ -13,7 +13,7 @@ gcloud auth application-default login
 gcloud auth application-default set-quota-project stocks-427911
 ```
 
-Create a bucketgarment-lime-footrace-anthrax
+Create a bucket
 ```
 gcloud storage buckets create gs://stocks-427911 --location=AUSTRALIA-SOUTHEAST1
 

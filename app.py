@@ -23,7 +23,6 @@ field_names = ['tkr','date','open','high','low','close','volume']
 #
 bucket_name = os.getenv('BUCKET')
 topic_name = os.getenv('TOPIC')
-commsec_user = os.getenv('COMMSEC_USER')
 project_id = os.getenv('GOOGLE_CLOUD_PROJECT')
 
 # Setup logging
@@ -54,8 +53,8 @@ def file_exists_in_bucket(bucket, date):
     blob = bucket.blob(make_file_name('eod/',date))
     return blob.exists()
 
-def get_password(secrets_client, project_id):
-    name = f"projects/{project_id}/secrets/COMMSEC_PASSWORD/versions/latest"
+def get_secret(secrets_client, project_id, secret):
+    name = f"projects/{project_id}/secrets/{secret}/versions/latest"
     secret = secrets_client.access_secret_version(request={"name": name})
     return secret.payload.data.decode("UTF-8")
 
@@ -190,7 +189,9 @@ def get_eod_data(dates):
         bq_client = bigquery.Client()
         storage_client = storage.Client()
 
-        commsec_password = get_password(secrets_client, project_id)
+        commsec_user = get_secret(secrets_client, project_id, 'COMMSEC_USER')
+        commsec_password = get_secret(secrets_client, project_id, 'COMMSEC_PASSWORD')
+
         topic_path = publisher.topic_path(project_id, topic_name)
         bucket = storage_client.bucket(bucket_name)
         holidays = get_dates_from_holiday_csv(bq_client)
