@@ -112,7 +112,7 @@ gcloud scheduler jobs create http ${SERVICE_NAME}-job \
     --schedule="0 20 * * *" \
     --time-zone="Australia/Sydney" \
     --http-method=GET \
-    --uri=${SERVICE_URL}/backfill/today \
+    --uri=${SERVICE_URL}/backfill/at/today \
     --oidc-service-account-email=${SERVICE_NAME}-sa@${PROJECT_ID}.iam.gserviceaccount.com \
     --location=${REGION}
 ```

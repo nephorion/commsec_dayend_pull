@@ -10,7 +10,7 @@ from google.cloud import secretmanager
 from google.cloud import pubsub_v1
 from google.cloud import bigquery
 from flask import Flask, jsonify, make_response
-from datetime import datetime
+from datetime import datetime, timedelta
 from commsec_download import login, download, get_browser, goto_download, close_browser
 
 # Constants
@@ -86,11 +86,12 @@ def parse_date_str(date_str):
 
 
 def get_date_range(from_date_str, to_date_str):
-    from_date = parse_date_str(from_date_str)
+    from_date = parse_date_str(from_date_str)+timedelta(days=1)
     to_date = parse_date_str(to_date_str)
     date_range = pd.date_range(start=to_date, end=from_date)
     dates = date_range.tolist()
     dates.reverse()
+    logger.info(dates)
     return dates
 
 def get_dates_from_holiday_csv(bq_client):
@@ -185,6 +186,8 @@ def process_date(browser, bucket, date, holidays):
         finally:
             if os.path.exists(local_file_name):
                 os.remove(f"./{local_file_name}")
+    else:
+        logger.info(f"Skipped Downloading (Existing) - {date_str}")
 
 
 def get_eod_data(dates):
