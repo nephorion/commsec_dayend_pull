@@ -25,12 +25,42 @@ gcloud iam service-accounts create ${SERVICE_NAME}-sa \
 
 gcloud projects add-iam-policy-binding ${PROJECT_ID} \
   --member="serviceAccount:${SERVICE_NAME}-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --role="roles/storage.objectCreator" \
-  --role="roles/secretmanager.secretAccessor" \
-  --role="roles/run.invoker" \
-  --role="roles/bigquery.dataViewer" \
   --role="roles/bigquery.dataEditor" 
+
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+  --member="serviceAccount:${SERVICE_NAME}-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/bigquery.jobUser" 
+  
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+  --member="serviceAccount:${SERVICE_NAME}-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/bigquery.dataViewer" 
+
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+  --member="serviceAccount:${SERVICE_NAME}-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/storage.objectCreator" 
+
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+  --member="serviceAccount:${SERVICE_NAME}-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/storage.objectUser" 
+
+
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+  --member="serviceAccount:${SERVICE_NAME}-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor" 
+
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+  --member="serviceAccount:${SERVICE_NAME}-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/run.invoker" 
+
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+  --member="serviceAccount:${SERVICE_NAME}-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/logging.logWriter" 
+  
+  
+
 ```
+
+
 
 ### Create the topic and allow the sa to publish to it
 ```
@@ -62,9 +92,9 @@ gcloud run deploy ${SERVICE_NAME} \
   --image=${REGION}-docker.pkg.dev/${PROJECT_ID}/${PROJECT_ID}/${SERVICE_NAME} \
   --platform=managed \
   --region=${REGION} \
-  --allow-unauthenticated \
+  --no-allow-unauthenticated \
   --service-account=${SERVICE_NAME}-sa@${PROJECT_ID}.iam.gserviceaccount.com \
-  --set-env-vars=BUCKET=stocks-427911,TOPIC=commsec-dayend-pull-done
+  --set-env-vars=BUCKET=stocks-427911,TOPIC=commsec-dayend-pull-done,GOOGLE_CLOUD_PROJECT=${PROJECT_ID}
 ```
 
 ### Get Service URL

@@ -35,6 +35,12 @@ handler = CloudLoggingHandler(client)
 handler.setLevel(logging.INFO)
 logger.addHandler(handler)
 
+logger.info(f"BUCKET = [{bucket_name}]")
+logger.info(f"TOPIC = [{topic_name}]")
+logger.info(f"GOOGLE_CLOUD_PROJECT = [{project_id}]")
+
+
+
 # Setup Flask
 # pylint: disable=C0103
 app = Flask(__name__)
