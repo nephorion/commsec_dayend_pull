@@ -91,7 +91,6 @@ def get_date_range(from_date_str, to_date_str):
     date_range = pd.date_range(start=to_date, end=from_date)
     dates = date_range.tolist()
     dates.reverse()
-    logger.info(dates)
     return dates
 
 def get_dates_from_holiday_csv(bq_client):
