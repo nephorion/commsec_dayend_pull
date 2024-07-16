@@ -3,6 +3,10 @@
 export REGION=australia-southeast1
 export PROJECT_ID=stocks-427911
 export SERVICE_NAME=commsec-dayend-pull
+gcloud config unset auth/access_token_file
+gcloud auth application-default set-quota-project ${PROJECT_ID} 
+gcloud auth application-default login
+gcloud config set project ${PROJECT_ID}
 ```
 
 ## Create the bucket
@@ -94,7 +98,7 @@ gcloud run deploy ${SERVICE_NAME} \
   --region=${REGION} \
   --no-allow-unauthenticated \
   --service-account=${SERVICE_NAME}-sa@${PROJECT_ID}.iam.gserviceaccount.com \
-  --set-env-vars=BUCKET=stocks-427911,TOPIC=commsec-dayend-pull-done,GOOGLE_CLOUD_PROJECT=${PROJECT_ID}
+  --set-env-vars=BUCKET=stocks-427911,TOPIC=commsec-dayend-pull-done,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},TZ=Australia/Sydney
 ```
 
 ### Get Service URL

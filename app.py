@@ -79,14 +79,18 @@ def publish(publisher, topic_path, data):
 
 
 def parse_date_str(date_str):
+    retval = None
     if date_str == 'today':
-        return datetime.now()
+        retval = datetime.now().date()
+    elif date_str == 'yesterday':
+        retval = datetime.now().date() - timedelta(days=1)
     else:
-        return datetime.strptime(date_str, file_template)
-
+        retval = datetime.strptime(date_str, file_template)
+    logger.info(f"--->{retval}")
+    return retval
 
 def get_date_range(from_date_str, to_date_str):
-    from_date = parse_date_str(from_date_str)+timedelta(days=1)
+    from_date = parse_date_str(from_date_str)
     to_date = parse_date_str(to_date_str)
     date_range = pd.date_range(start=to_date, end=from_date)
     dates = date_range.tolist()
@@ -238,14 +242,14 @@ def home():
 def backfill_date(at_date_str):
     dates = get_date_range(at_date_str, at_date_str)
     get_eod_data(dates)
-    return make_response(jsonify({}), 200)
+    return make_response(jsonify({"dates":dates}), 200)
 
 
 @app.route('/backfill/from/<from_date_str>/to/<to_date_str>')
 def backfill(from_date_str, to_date_str):
     dates = get_date_range(from_date_str, to_date_str)
     get_eod_data(dates)
-    return make_response(jsonify({}), 200)
+    return make_response(jsonify({"dates":dates}), 200)
 
 
 if __name__ == '__main__':
