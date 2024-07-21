@@ -17,7 +17,7 @@ from commsec_download import login, download, get_browser, goto_download, close_
 #
 file_template = '%Y%m%d'
 app_name = "commsec_dayend_pull"
-field_names = ['tkr','date','open','high','low','close','volume']
+field_names = ['tkr', 'date', 'open', 'high', 'low', 'close', 'volume']
 
 # Get the environment variables
 #
@@ -39,11 +39,10 @@ logger.info(f"BUCKET = [{bucket_name}]")
 logger.info(f"TOPIC = [{topic_name}]")
 logger.info(f"GOOGLE_CLOUD_PROJECT = [{project_id}]")
 
-
-
 # Setup Flask
 # pylint: disable=C0103
 app = Flask(__name__)
+
 
 def list_files_with_prefix(bucket, prefix):
     blobs = bucket.list_blobs(prefix=prefix)
@@ -56,8 +55,9 @@ def make_file_name(prefix, date):
 
 
 def file_exists_in_bucket(bucket, date):
-    blob = bucket.blob(make_file_name('eod/',date))
+    blob = bucket.blob(make_file_name('eod/', date))
     return blob.exists()
+
 
 def get_secret(secrets_client, project_id, secret):
     name = f"projects/{project_id}/secrets/{secret}/versions/latest"
@@ -86,8 +86,8 @@ def parse_date_str(date_str):
         retval = datetime.now().date() - timedelta(days=1)
     else:
         retval = datetime.strptime(date_str, file_template)
-    logger.info(f"--->{retval}")
     return retval
+
 
 def get_date_range(from_date_str, to_date_str):
     from_date = parse_date_str(from_date_str)
@@ -96,6 +96,7 @@ def get_date_range(from_date_str, to_date_str):
     dates = date_range.tolist()
     dates.reverse()
     return dates
+
 
 def get_dates_from_holiday_csv(bq_client):
     query = """
@@ -106,6 +107,7 @@ def get_dates_from_holiday_csv(bq_client):
     dates = [str(row["date"]) for row in rows]
     return dates
 
+
 def get_filenames_in_bq(bq_client):
     query = """
         SELECT distinct(filename) as filename
@@ -115,7 +117,8 @@ def get_filenames_in_bq(bq_client):
     filenames = [row["filename"] for row in rows]
     return filenames
 
-def delete_records_in_bq(bq_client,filenames):
+
+def delete_records_in_bq(bq_client, filenames):
     # Delete records in BigQuery that are not in GCS
     for filename in filenames:
         delete_query = f"""
@@ -124,6 +127,7 @@ def delete_records_in_bq(bq_client,filenames):
         """
         delete_job = bq_client.query(delete_query)
         delete_job.result()  # Wait for the job to complete
+
 
 def sync_gcs_to_bq(gcs_files, bq_files, bucket, bq_client):
     files_to_insert = set(gcs_files) - set(bq_files)
@@ -164,9 +168,10 @@ def wait_for_file(filepath, timeout):
 
     return False
 
+
 def process_date(browser, bucket, date, holidays):
     date_str = date.strftime(file_template)
-    file_name = make_file_name('eod/',date)
+    file_name = make_file_name('eod/', date)
     local_file_name = make_file_name('', date)
 
     if date.weekday() >= 5:
@@ -242,14 +247,14 @@ def home():
 def backfill_date(at_date_str):
     dates = get_date_range(at_date_str, at_date_str)
     get_eod_data(dates)
-    return make_response(jsonify({"dates":dates}), 200)
+    return make_response(jsonify({"dates": dates}), 200)
 
 
 @app.route('/backfill/from/<from_date_str>/to/<to_date_str>')
 def backfill(from_date_str, to_date_str):
     dates = get_date_range(from_date_str, to_date_str)
     get_eod_data(dates)
-    return make_response(jsonify({"dates":dates}), 200)
+    return make_response(jsonify({"dates": dates}), 200)
 
 
 if __name__ == '__main__':
