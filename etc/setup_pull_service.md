@@ -120,4 +120,11 @@ gcloud scheduler jobs create http ${SERVICE_NAME}-job \
     --location=${REGION}
 ```
 
+### Increase memory
+```
+gcloud run services update ${SERVICE_NAME} \
+  --memory 1Gi \
+  --region ${REGION} \
+  --project ${PROJECT_ID}
+```
 
