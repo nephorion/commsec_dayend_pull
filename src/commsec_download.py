@@ -1,4 +1,5 @@
 import time
+from datetime import date, timedelta
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
@@ -47,7 +48,8 @@ def login(browser, username, password):
     try:
         browser.get(login_url)
 
-        username_input = browser.find_element(By.ID, "username")
+        wait = WebDriverWait(browser, timeout=10)
+        username_input = wait.until(EC.presence_of_element_located((By.ID, "username")))
         username_input.send_keys(username)
         password_input = browser.find_element(By.ID, "password")
         password_input.send_keys(password)
@@ -55,7 +57,6 @@ def login(browser, username, password):
         login_btn = browser.find_element(By.ID, "login")
         login_btn.click()
 
-        wait = WebDriverWait(browser, timeout=10)
         home = wait.until(EC.presence_of_element_located((By.ID, "home")))
     except Exception as e:
         raise CustomException(e, f"Failed to login [{login_url}] [{username}]")
@@ -140,7 +141,7 @@ if __name__ == '__main__':
         login(test_browser, commsec_user, commsec_password)
         print("Login Success")
         goto_download(test_browser)
-        download(test_browser, datetime.now())
+        download(test_browser, datetime.now()- timedelta(days=3))
     except Exception as ex:
         print(ex)
 
