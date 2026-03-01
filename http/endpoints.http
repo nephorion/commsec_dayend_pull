@@ -1,0 +1,27 @@
+### Health check
+GET {{base_url}}/
+Authorization: {{auth_header}}
+
+###
+
+### Backfill today
+GET {{base_url}}/backfill/at/today
+Authorization: {{auth_header}}
+
+###
+
+### Backfill yesterday
+GET {{base_url}}/backfill/at/yesterday
+Authorization: {{auth_header}}
+
+###
+
+### Backfill specific date
+GET {{base_url}}/backfill/at/20250228
+Authorization: {{auth_header}}
+
+###
+
+### Backfill date range
+GET {{base_url}}/backfill/from/20250224/to/20250228
+Authorization: {{auth_header}}

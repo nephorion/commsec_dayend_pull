@@ -19,7 +19,7 @@ gcloud storage buckets create gs://${PROJECT_ID} \
 ## Create the bq dataset and tables
 ```
 bq mk --location=${REGION} data
-bq mk --table data.raw_eod raw_eod_schema.json
+bq mk --table data.raw_eod etc/raw_eod_schema.json
 ```
 
 ## Create the service account
@@ -63,7 +63,6 @@ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
   
 
 ```
-
 
 
 ### Create the topic and allow the sa to publish to it

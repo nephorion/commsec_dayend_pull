@@ -4,19 +4,21 @@ FROM python:3.11-alpine
 RUN apk update
 RUN apk add chromium chromium-chromedriver
 
+# Copy uv binary from the official image
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
 # Set the working directory to /app
 WORKDIR /app
 
-# copy the requirements file used for dependencies
-COPY requirements.txt .
-
-# Install any needed packages specified in requirements.txt
-RUN pip install --upgrade pip
-RUN pip install --trusted-host pypi.python.org -r requirements.txt
+# Install dependencies from lockfile before copying source for better layer caching
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
 
 # Copy the rest of the working directory contents into the container at /app
 COPY . .
 
+# Add the venv to PATH
+ENV PATH="/app/.venv/bin:$PATH"
+
 # Run app.py when the container launches
-ENTRYPOINT ["python", "app.py"]
+ENTRYPOINT ["python", "src/app.py"]
