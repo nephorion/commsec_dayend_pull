@@ -103,6 +103,26 @@ $SERVICE_URL = gcloud run services describe $SERVICE_NAME `
     --format "value(status.url)"
 ```
 
+### Endpoints
+| Endpoint | Description |
+|----------|-------------|
+| `GET /` | Health check |
+| `GET /backfill/at/<date>` | Download and sync a single date. Use `today`, `yesterday`, or `YYYYMMDD` |
+| `GET /backfill/from/<from>/to/<to>` | Download and sync a date range |
+| `GET /sync` | Sync GCS files to BigQuery without fetching from CommSec |
+
+```powershell
+# Sync GCS to BQ without downloading
+$TOKEN = gcloud auth print-identity-token
+Invoke-RestMethod -Uri "$SERVICE_URL/sync" -Headers @{Authorization="Bearer $TOKEN"}
+
+# Backfill a single date
+Invoke-RestMethod -Uri "$SERVICE_URL/backfill/at/today" -Headers @{Authorization="Bearer $TOKEN"}
+
+# Backfill a date range
+Invoke-RestMethod -Uri "$SERVICE_URL/backfill/from/20240101/to/today" -Headers @{Authorization="Bearer $TOKEN"}
+```
+
 ### Schedule the service
 ```powershell
 gcloud services enable cloudscheduler.googleapis.com

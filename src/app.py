@@ -150,6 +150,10 @@ def sync_gcs_to_bq(gcs_files, bq_files, bucket, bq_client):
             json_record['timestamp'] = datetime.now().isoformat()
             json_data.append(json_record)
 
+        if not json_data:
+            logger.warning(f"No valid rows found in [{file_name}], skipping insert")
+            continue
+
         table_ref = bq_client.dataset('data').table('raw_eod')
         errors = bq_client.insert_rows_json(table_ref, json_data)
 

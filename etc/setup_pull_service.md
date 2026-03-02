@@ -108,6 +108,28 @@ export SERVICE_URL=$(gcloud run services describe ${SERVICE_NAME} \
     --format 'value(status.url)')
 ```
 
+### Endpoints
+| Endpoint | Description |
+|----------|-------------|
+| `GET /` | Health check |
+| `GET /backfill/at/<date>` | Download and sync a single date. Use `today`, `yesterday`, or `YYYYMMDD` |
+| `GET /backfill/from/<from>/to/<to>` | Download and sync a date range |
+| `GET /sync` | Sync GCS files to BigQuery without fetching from CommSec |
+
+```
+# Sync GCS to BQ without downloading
+curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+  ${SERVICE_URL}/sync
+
+# Backfill a single date
+curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+  ${SERVICE_URL}/backfill/at/today
+
+# Backfill a date range
+curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+  ${SERVICE_URL}/backfill/from/20240101/to/today
+```
+
 ### Schedule the service
 ```
 gcloud services enable cloudscheduler.googleapis.com
