@@ -211,8 +211,12 @@ dependencies = [
     { name = "google-cloud-secret-manager" },
     { name = "google-cloud-storage" },
     { name = "pandas" },
-    { name = "python-dotenv" },
     { name = "selenium" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "python-dotenv" },
 ]
 
 [package.metadata]
@@ -224,9 +228,11 @@ requires-dist = [
     { name = "google-cloud-secret-manager" },
     { name = "google-cloud-storage" },
     { name = "pandas", specifier = "~=2.2.2" },
-    { name = "python-dotenv", specifier = "~=1.0.1" },
     { name = "selenium", specifier = "~=4.22.0" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "python-dotenv", specifier = "~=1.0.1" }]
 
 [[package]]
 name = "cryptography"

@@ -225,7 +225,7 @@ def home():
 
 ---
 
-### 17. `python-dotenv` is a production dependency
+### ✅ 17. `python-dotenv` is a production dependency
 **File:** `pyproject.toml:9`
 
 `python-dotenv` is only used in the `if __name__ == '__main__'` block of `commsec_download.py` for local testing. It should be a dev dependency.
