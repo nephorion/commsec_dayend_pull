@@ -133,6 +133,7 @@ def delete_records_in_bq(bq_client, filenames):
 def sync_gcs_to_bq(gcs_files, bq_files, bucket, bq_client):
     files_to_insert = set(gcs_files) - set(bq_files)
     #files_to_delete = set(bq_files) - set(gcs_files)
+    inserted = 0
 
     for file_name in files_to_insert:
         blob = bucket.blob(file_name)
@@ -161,8 +162,10 @@ def sync_gcs_to_bq(gcs_files, bq_files, bucket, bq_client):
             logger.error(f"Encountered errors while inserting rows for {file_name}: {errors[0]}")
         else:
             logger.info(f"Inserted rows from [{file_name}]")
+            inserted += 1
 
     #delete_records_in_bq(bq_client, files_to_delete)
+    return inserted
 
 
 def wait_for_file(filepath, timeout):
@@ -246,8 +249,7 @@ def get_eod_data(dates):
 
 @app.route('/')
 def home():
-    logger.info('This is an info log message')
-    return f"processing..."
+    return "ok"
 
 
 @app.route('/sync')
@@ -257,8 +259,8 @@ def sync():
     bucket = storage_client.bucket(bucket_name)
     gcs_files = list_files_with_prefix(bucket, 'eod/')
     bq_files = get_filenames_in_bq(bq_client)
-    sync_gcs_to_bq(gcs_files, bq_files, bucket, bq_client)
-    return make_response(jsonify({"synced": len(set(gcs_files) - set(bq_files))}), 200)
+    inserted = sync_gcs_to_bq(gcs_files, bq_files, bucket, bq_client)
+    return make_response(jsonify({"synced": inserted}), 200)
 
 
 @app.route('/backfill/at/<at_date_str>')

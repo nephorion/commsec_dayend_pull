@@ -189,7 +189,7 @@ Returns `False` for weekends and holidays, but `None` (implicitly) for all other
 
 ---
 
-### 14. Health check route logs on every call
+### ✅ 14. Health check route logs on every call
 **File:** `src/app.py:249`
 
 `logger.info('This is an info log message')` is a placeholder that was never cleaned up. Cloud Run health checks hit `/` frequently, flooding logs with noise.
@@ -203,7 +203,7 @@ def home():
 
 ---
 
-### 15. `/sync` response count computed before sync runs
+### ✅ 15. `/sync` response count computed before sync runs
 **File:** `src/app.py:261`
 
 `len(set(gcs_files) - set(bq_files))` reflects the number of files that *should* be synced, not the number that *were* synced (some may fail). `sync_gcs_to_bq` should return a count of successfully inserted files.
