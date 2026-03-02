@@ -142,6 +142,8 @@ def sync_gcs_to_bq(gcs_files, bq_files, bucket, bq_client):
         json_data = []
         for row in rows:
             columns = row.split(',')
+            if len(columns) < len(field_names):
+                continue
             json_record = {f"{field_names[i]}": value for i, value in enumerate(columns)}
             json_record['date'] = str(datetime.strptime(json_record['date'], '%Y%m%d').date())
             json_record['filename'] = file_name
