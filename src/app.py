@@ -2,7 +2,6 @@ import os
 import time
 import logging
 import json
-import pandas as pd
 import google.cloud.logging
 from google.cloud.logging.handlers import CloudLoggingHandler
 from google.cloud import storage
@@ -93,10 +92,8 @@ def parse_date_str(date_str):
 def get_date_range(from_date_str, to_date_str):
     from_date = parse_date_str(from_date_str)
     to_date = parse_date_str(to_date_str)
-    date_range = pd.date_range(start=to_date, end=from_date)
-    dates = date_range.tolist()
-    dates.reverse()
-    return dates
+    delta = (to_date - from_date).days
+    return [from_date + timedelta(days=i) for i in range(delta + 1)]
 
 
 def get_dates_from_holiday_csv(bq_client):
