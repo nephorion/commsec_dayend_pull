@@ -168,21 +168,21 @@ def get_date_range(from_date_str, to_date_str):
 
 ---
 
-### 11. `close_browser` unconditional 3-second sleep
+### ✅ 11. `close_browser` unconditional 3-second sleep
 **File:** `src/commsec_download.py:124`
 
 `time.sleep(3)` runs before `browser.quit()` on every request, even when no download was attempted. The download wait is already handled by `wait_for_file`. This adds 3 seconds to every request unnecessarily.
 
 ---
 
-### 12. Dead code — `delete_records_in_bq` and `files_to_delete`
+### ✅ 12. Dead code — `delete_records_in_bq` and `files_to_delete`
 **File:** `src/app.py:122-130`, `src/app.py:135`, `src/app.py:165`
 
 `delete_records_in_bq` is defined but never called. The `files_to_delete` logic is commented out. Either implement it or remove it.
 
 ---
 
-### 13. `process_date` inconsistent return values
+### ✅ 13. `process_date` inconsistent return values
 **File:** `src/app.py:179-205`
 
 Returns `False` for weekends and holidays, but `None` (implicitly) for all other cases (success or download error). Not used by callers currently, but confusing.

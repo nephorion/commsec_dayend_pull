@@ -121,7 +121,6 @@ def close_browser(browser):
     :return: None
     """
     try:
-        time.sleep(3)
         browser.quit()
     except Exception as e:
         raise CustomException(e, f"Failed to close browser")

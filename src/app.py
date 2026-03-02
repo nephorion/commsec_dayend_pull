@@ -119,20 +119,8 @@ def get_filenames_in_bq(bq_client):
     return filenames
 
 
-def delete_records_in_bq(bq_client, filenames):
-    # Delete records in BigQuery that are not in GCS
-    for filename in filenames:
-        delete_query = f"""
-            DELETE FROM `data.raw_eod`
-            WHERE filename = '{filename}'
-        """
-        delete_job = bq_client.query(delete_query)
-        delete_job.result()  # Wait for the job to complete
-
-
 def sync_gcs_to_bq(gcs_files, bq_files, bucket, bq_client):
     files_to_insert = set(gcs_files) - set(bq_files)
-    #files_to_delete = set(bq_files) - set(gcs_files)
     inserted = 0
 
     for file_name in files_to_insert:
@@ -164,7 +152,6 @@ def sync_gcs_to_bq(gcs_files, bq_files, bucket, bq_client):
             logger.info(f"Inserted rows from [{file_name}]")
             inserted += 1
 
-    #delete_records_in_bq(bq_client, files_to_delete)
     return inserted
 
 
@@ -186,11 +173,11 @@ def process_date(browser, bucket, date, holidays):
 
     if date.weekday() >= 5:
         logger.info(f"Skipped Downloading(Weekend) - {date_str}")
-        return False
+        return
 
     if date_str in holidays:
         logger.info(f"Skipped Downloading(Holiday) - {date_str}")
-        return False
+        return
 
     if not file_exists_in_bucket(bucket, date):
         try:
