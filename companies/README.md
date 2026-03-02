@@ -28,5 +28,5 @@ bq load \
     --replace \
     --skip_leading_rows=1 \
     lookup.companies \
-    gs://${PROJECT_ID}/companies/ASX_Listed_Companies_08-07-2024_02-38-29_AEST.csv
+    gs://${PROJECT_ID}/companies/ASX_Listed_Companies_02-03-2026_02-54-25_AEDT.csv
 ```
