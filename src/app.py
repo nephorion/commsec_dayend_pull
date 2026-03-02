@@ -31,6 +31,7 @@ client = google.cloud.logging.Client()
 client.setup_logging()
 logger = logging.getLogger(app_name)
 logger.setLevel(logging.INFO)
+logger.propagate = False
 handler = CloudLoggingHandler(client)
 handler.setLevel(logging.INFO)
 logger.addHandler(handler)
@@ -241,6 +242,17 @@ def get_eod_data(dates):
 def home():
     logger.info('This is an info log message')
     return f"processing..."
+
+
+@app.route('/sync')
+def sync():
+    bq_client = bigquery.Client()
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+    gcs_files = list_files_with_prefix(bucket, 'eod/')
+    bq_files = get_filenames_in_bq(bq_client)
+    sync_gcs_to_bq(gcs_files, bq_files, bucket, bq_client)
+    return make_response(jsonify({"synced": len(set(gcs_files) - set(bq_files))}), 200)
 
 
 @app.route('/backfill/at/<at_date_str>')
