@@ -239,7 +239,7 @@ dev = ["python-dotenv~=1.0.1"]
 
 ## Docker Issues
 
-### 18. No `.dockerignore`
+### ✅ 18. No `.dockerignore`
 **File:** `Dockerfile`
 
 `COPY . .` copies `.venv`, `__pycache__`, `.git`, any locally downloaded `.txt` files, and other unnecessary content into the image, increasing image size and potentially leaking local state.
