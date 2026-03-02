@@ -39,7 +39,7 @@ A Flask service that automates the download of ASX end-of-day (EOD) equity price
 | GET | `/backfill/at/today` | Download today's data |
 | GET | `/backfill/at/yesterday` | Download yesterday's data |
 | GET | `/backfill/at/YYYYMMDD` | Download data for a specific date |
-| GET | `/backfill/from/YYYYMMDD/to/YYYYMMDD` | Download data for a date range |
+| GET | `/backfill/from/YYYYMMDD/to/<br/>` | Download data for a date range |
 
 ## Local development
 
