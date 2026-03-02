@@ -212,7 +212,7 @@ def home():
 
 ## Dependency Issues
 
-### 16. `google-cloud-*` packages have no version pins
+### ✅ 16. `google-cloud-*` packages have no version pins
 **File:** `pyproject.toml:10-14`
 
 `google-cloud-storage`, `google-cloud-bigquery`, etc. float to latest on every build. This can silently break the service when GCP releases breaking changes.

@@ -6,11 +6,11 @@ dependencies = [
     "flask~=2.3.3",
     "pandas~=2.2.2",
     "selenium~=4.22.0",
-    "google-cloud-storage",
-    "google-cloud-secret-manager",
-    "google-cloud-logging",
-    "google-cloud-pubsub",
-    "google-cloud-bigquery",
+    "google-cloud-storage>=3.9,<4",
+    "google-cloud-secret-manager>=2.26,<3",
+    "google-cloud-logging>=3.13,<4",
+    "google-cloud-pubsub>=2.35,<3",
+    "google-cloud-bigquery>=3.40,<4",
 ]
 
 [dependency-groups]
